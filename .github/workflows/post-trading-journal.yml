@@ -1,4 +1,4 @@
-name: Post Daily Trading Journal
+name: Daily Trading Journal
 
 on:
   schedule:
@@ -12,10 +12,12 @@ jobs:
 
     steps:
       - name: Post daily trading journal to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           TODAY=$(TZ="America/New_York" date +"%A, %B %-d, %Y")
 
-          MESSAGE=$(cat <<EOF
+          cat > message.txt <<EOF
 # 📓 Daily Trading Journal — $TODAY
 
 ## Daily Check-In
@@ -54,13 +56,10 @@ jobs:
 **Grade my trading:** A / B / C / D / F  
 **Tomorrow’s focus:**  
 EOF
-          )
 
-          jq -n --arg content "$MESSAGE" '{content: $content}' > payload.json
+          jq -Rs '{content: .}' message.txt > payload.json
 
           curl -H "Content-Type: application/json" \
             -X POST \
             -d @payload.json \
             "$DISCORD_WEBHOOK_URL"
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
