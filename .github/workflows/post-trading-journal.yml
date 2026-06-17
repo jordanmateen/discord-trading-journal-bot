@@ -2,7 +2,6 @@ name: Daily Trading Journal
 
 on:
   schedule:
-    # 4:15 PM ET during daylight saving time = 20:15 UTC
     - cron: "15 20 * * 1-5"
   workflow_dispatch:
 
@@ -15,51 +14,65 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          TODAY=$(TZ="America/New_York" date +"%A, %B %-d, %Y")
+          python3 <<'PY'
+          import os
+          import json
+          import urllib.request
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
 
-          cat > message.txt <<EOF
-# 📓 Daily Trading Journal — $TODAY
+          webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
 
-## Daily Check-In
-**Mood before trading:**  
-**Energy level 1–10:**  
-**Did I follow my plan?** Yes / No / Mostly  
-**Max loss respected?** Yes / No / N/A  
+          today = datetime.now(ZoneInfo("America/New_York")).strftime("%A, %B %d, %Y")
 
-## Trade Summary
-**Green / Red / Breakeven:**  
-**Number of trades:**  
-**Best trade:**  
-**Worst trade:**  
-**Main setup traded:**  
+          message = f"""# 📓 Daily Trading Journal — {today}
 
-## Execution Review
-**Did I chase?** Yes / No  
-**Did I overtrade?** Yes / No  
-**Did I move my stop?** Yes / No  
-**Was my position size appropriate?** Yes / No  
-**Did I take profits according to plan?** Yes / No / Partially  
+          ## Daily Check-In
+          **Mood before trading:**  
+          **Energy level 1–10:**  
+          **Did I follow my plan?** Yes / No / Mostly  
+          **Max loss respected?** Yes / No / N/A  
 
-## If Green
-**What did I do well?**  
-**Good execution or luck?**  
-**What should I repeat tomorrow?**  
+          ## Trade Summary
+          **Green / Red / Breakeven:**  
+          **Number of trades:**  
+          **Best trade:**  
+          **Worst trade:**  
+          **Main setup traded:**  
 
-## If Red
-**What caused the loss?** Bad setup / Bad entry / Bad exit / Oversizing / Chasing / Market / Emotion  
-**Did I break a rule?** Yes / No  
-**What emotion showed up most?** Fear / Greed / FOMO / Revenge / Hesitation / Frustration  
-**One adjustment for tomorrow:**  
+          ## Execution Review
+          **Did I chase?** Yes / No  
+          **Did I overtrade?** Yes / No  
+          **Did I move my stop?** Yes / No  
+          **Was my position size appropriate?** Yes / No  
+          **Did I take profits according to plan?** Yes / No / Partially  
 
-## Final Reflection
-**One lesson from today:**  
-**Grade my trading:** A / B / C / D / F  
-**Tomorrow’s focus:**  
-EOF
+          ## If Green
+          **What did I do well?**  
+          **Good execution or luck?**  
+          **What should I repeat tomorrow?**  
 
-          jq -Rs '{content: .}' message.txt > payload.json
+          ## If Red
+          **What caused the loss?** Bad setup / Bad entry / Bad exit / Oversizing / Chasing / Market / Emotion  
+          **Did I break a rule?** Yes / No  
+          **What emotion showed up most?** Fear / Greed / FOMO / Revenge / Hesitation / Frustration  
+          **One adjustment for tomorrow:**  
 
-          curl -H "Content-Type: application/json" \
-            -X POST \
-            -d @payload.json \
-            "$DISCORD_WEBHOOK_URL"
+          ## Final Reflection
+          **One lesson from today:**  
+          **Grade my trading:** A / B / C / D / F  
+          **Tomorrow’s focus:**  
+          """
+
+          payload = json.dumps({"content": message}).encode("utf-8")
+
+          request = urllib.request.Request(
+              webhook_url,
+              data=payload,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+
+          with urllib.request.urlopen(request) as response:
+              print(f"Discord response status: {response.status}")
+          PY
