@@ -1,30 +1,30 @@
-name: Test Discord Webhook
+name: Post Daily Trading Journal
 
 on:
+  schedule:
+    # 4:15 PM ET during daylight saving time
+    - cron: "15 20 * * 1-5"
   workflow_dispatch:
 
 jobs:
-  test-webhook:
+  post-journal:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test Discord webhook
+      - name: Post daily trading journal to Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          echo "Secret length: ${#DISCORD_WEBHOOK_URL}"
+          TODAY=$(TZ="America/New_York" date +"%A, %B %d, %Y")
 
-          python3 - <<'PY'
-          import os
-          import hashlib
-
-          url = os.environ.get("DISCORD_WEBHOOK_URL", "")
-          print("Starts with discord webhook URL:", url.startswith("https://discord.com/api/webhooks/"))
-          print("Webhook URL sha256:", hashlib.sha256(url.encode()).hexdigest())
-          PY
+          cat > payload.json <<EOF
+          {
+            "content": "# 📓 Daily Trading Journal — $TODAY\n\n## Daily Check-In\n**Mood:** Calm / Anxious / Confident / Rushed / Tired\n**Energy:** 1–10\n**Did I follow my plan?** Yes / No / Mostly\n**Max loss respected?** Yes / No / N/A\n\n## Trade Summary\n**Day result:** Green / Red / Breakeven\n**Trades taken:**\n**Best trade:**\n**Worst trade:**\n**Main setup traded:**\n\n## Execution Review\n**Did I chase?** Yes / No\n**Did I overtrade?** Yes / No\n**Did I move my stop?** Yes / No\n**Was my size appropriate?** Yes / No\n**Took profits according to plan?** Yes / No / Partially\n\n## If Green\n**What did I do well?**\n**Good execution or luck?**\n**What should I repeat tomorrow?**\n\n## If Red\n**What caused the loss?** Bad setup / Bad entry / Bad exit / Oversizing / Chasing / Market / Emotion\n**Did I break a rule?** Yes / No\n**Main emotion:** Fear / Greed / FOMO / Revenge / Hesitation / Frustration\n**One adjustment for tomorrow:**\n\n## Final Reflection\n**Lesson from today:**\n**Trading grade:** A / B / C / D / F\n**Tomorrow’s focus:**"
+          }
+          EOF
 
           curl -i \
             -H "Content-Type: application/json" \
             -X POST \
-            -d '{"content":"GitHub Actions Discord webhook test"}' \
+            -d @payload.json \
             "$DISCORD_WEBHOOK_URL"
