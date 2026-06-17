@@ -2,8 +2,8 @@ name: Post Daily Trading Journal
 
 on:
   schedule:
-    # 4:15 PM ET during daylight saving time
-    - cron: "15 20 * * 1-5"
+    # 3:30 PM ET during daylight saving time
+    - cron: "30 19 * * 1-5"
   workflow_dispatch:
 
 jobs:
